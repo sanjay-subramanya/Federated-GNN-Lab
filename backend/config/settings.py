@@ -1,12 +1,11 @@
 import os
-import torch
 from pathlib import Path
 
 class Config:
     # General settings
     parent_dir = Path(__file__).resolve().parent.parent
     model_dir = parent_dir / "saved_models"
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cpu"
     
     # Data preprocessing
     n_neighbors_knn_imputer = 5
@@ -17,14 +16,14 @@ class Config:
     # FL Training setup
     n_clients = 3
     n_rounds = 10
-    local_epochs = 5
+    local_epochs = 4
     label_map = {'Alive': 1, 'Dead': 0}
 
     # Model hyperparameters
     dropout = 0.5
     weight_decay = 1e-3
     learning_rate = 0.001
-    hidden_dim = 64
+    hidden_dim = 32
     out_dim = 2
 
     # Flower server config
@@ -42,5 +41,5 @@ class Config:
     vercel_blob_delete_url = "https://blob.vercel-storage.com/delete"
     vercel_blob_download_url = "https://blob.vercel-storage.com"
     vercel_blob_token = os.getenv("VERCEL_BLOB_TOKEN")
-    # if not vercel_blob_token:
-    #     raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")
+    if not vercel_blob_token:
+        raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")

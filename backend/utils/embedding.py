@@ -3,7 +3,6 @@ import pandas as pd
 from pathlib import Path
 from config.settings import Config
 from models.gnn_model import SAGENet
-from torch_geometric.data import Data
 from typing import List
 
 def extract_patient_embeddings(model: SAGENet, protein_df: pd.DataFrame, feature_cols: List[str]=None) -> pd.DataFrame:

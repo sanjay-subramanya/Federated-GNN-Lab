@@ -1,4 +1,5 @@
 import os
+import gc
 import json
 import torch
 import logging
@@ -13,6 +14,7 @@ from config.settings import Config
 from models.gnn_model import SAGENet
 from data.loader import DataObj
 from utils.metrics import calculate_model_divergence
+from utils.blob_utils import upload_file_to_blob
 from utils.logging_utils import configure_logging
 from utils.seeding import set_seeds
 
@@ -86,17 +88,22 @@ def save_final_models_and_metadata(
     
     if not run_id:
         model_dir = Config.model_dir
+        blob_prefix = "saved_models"
     else:
         model_dir = Config.model_dir / run_id
+        blob_prefix = f"saved_models/{run_id}"
+
     os.makedirs(model_dir, exist_ok=True)
 
     global_model_path = model_dir / "global_model_manual.pt"
     torch.save({"model_state_dict": global_model.state_dict()}, global_model_path)
+    upload_file_to_blob(f"{blob_prefix}/global_model_manual.pt", str(global_model_path))
     logger.info(f"Saved final global model (manual simulation) to {global_model_path}")
 
     for i, client_model in enumerate(client_models):
         client_model_path = model_dir / f"client_{i+1}_model.pt"
         torch.save({"model_state_dict": client_model.state_dict()}, client_model_path)
+        upload_file_to_blob(f"{blob_prefix}/client_{i+1}_model.pt", str(client_model_path))
         logger.info(f"Saved client {i+1} model to {client_model_path}")
 
     metadata_path = model_dir / "_train_metadata.json"
@@ -108,10 +115,12 @@ def save_final_models_and_metadata(
     }
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=4)
+    upload_file_to_blob(f"{blob_prefix}/_train_metadata.json", str(metadata_path))
 
     divergence_path = model_dir / "_divergence_metrics.json"
     with open(divergence_path, "w") as f:
         json.dump(divergence_history, f, indent=4)
+    upload_file_to_blob(f"{blob_prefix}/_divergence_metrics.json", str(divergence_path))
     logger.info(f"Saved divergence metrics to {divergence_path}")
 
 
@@ -130,15 +139,8 @@ def run_manual_simulation(
     global_model = SAGENet(num_features, hidden_dim=Config.hidden_dim, out_dim=num_classes, dropout=Config.dropout).to(Config.device)
     global_model_state = global_model.state_dict()
 
-    # Initialize client models (one for each client). Each client model starts as a clone of the global model state.
-    client_models = [
-        SAGENet(num_features, hidden_dim=Config.hidden_dim, out_dim=num_classes, dropout=Config.dropout).to(Config.device)
-        for _ in client_datasets
-    ]
-    for client_model in client_models:
-        client_model.load_state_dict(global_model_state)
-
     divergence_history = []
+    client_models = [None for _ in client_datasets]
 
     # Track losses for each client
     client_train_losses = [[] for _ in range(len(client_datasets))]
@@ -146,24 +148,34 @@ def run_manual_simulation(
     
     # Run federated learning rounds
     for round_num in range(num_rounds):
-        print(f"\n--- Federated Round {round_num+1} (Manual Simulation) ---")
+        # print(f"\n--- Federated Round {round_num+1} (Manual Simulation) ---")
         local_states = []
         
         for client_id_idx, client_data in enumerate(client_datasets):
             if client_data.train_mask.sum().item() > 0:
-                print(f"Client {client_id_idx+1} training...")
-                client_models[client_id_idx].load_state_dict(global_model_state)
+
+                client_model = SAGENet(num_features, hidden_dim=Config.hidden_dim, out_dim=num_classes, dropout=Config.dropout).to(Config.device)
+                client_model.load_state_dict(global_model_state)
 
                 local_state, train_loss, val_loss = train_one_client(
-                    client_models[client_id_idx], client_data, Config.local_epochs
+                    client_model, client_data, Config.local_epochs
                 )
                 local_states.append(local_state)
                 client_train_losses[client_id_idx].append(train_loss)
                 client_val_losses[client_id_idx].append(val_loss)
+
+                # If final round, save client model for downstream tasks
+                if round_num == num_rounds - 1:
+                    client_models[client_id_idx] = client_model
+                
+                del client_model, local_state
+
             else:
                 logger.warning(f"Client {client_id_idx+1} has no training data, skipping this round.")
                 client_train_losses[client_id_idx].append(float("nan"))
                 client_val_losses[client_id_idx].append(float("nan"))
+        
+        gc.collect()
 
         if local_states:
             global_model_state = average_weights(local_states)
@@ -179,10 +191,10 @@ def run_manual_simulation(
             "client_divergence": {}
         }
 
-        for i in range(len(client_models)):
+        # for i in range(len(client_models)):
+        for i, state_dict in enumerate(local_states):
             client_id = f"client_{i+1}"
-            client_model_sd = client_models[i].state_dict()
-            layer_divergences = calculate_model_divergence(client_model_sd, global_model_state)
+            layer_divergences = calculate_model_divergence(state_dict, global_model_state)
             round_divergence["client_divergence"][client_id] = layer_divergences
 
         divergence_history.append(round_divergence)
@@ -201,5 +213,4 @@ def run_manual_simulation(
         plot_client_losses(client_train_losses, client_val_losses)       
 
     save_final_models_and_metadata(global_model, client_models, client_datasets, num_rounds, divergence_history, run_id=run_id)
-    logger.info("Manual simulation completed.")
     return global_model, client_train_losses, client_val_losses

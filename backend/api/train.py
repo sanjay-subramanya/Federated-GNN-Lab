@@ -7,11 +7,11 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Generator
 from data.loader import load_and_partition_data
-from utils.logging_utils import configure_logging
+# from utils.logging_utils import configure_logging
 from trainer.manual_simulation import run_manual_simulation
 
-configure_logging()
-logger = logging.getLogger(__name__)
+# configure_logging()
+# logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ async def stream_training(request: Request, req: TrainConfig):
                 yield json.dumps(round_result) + "\n"
                 time.sleep(0.5)
         except Exception as e:
-            logger.error(f"Error in training_generator: {str(e)}")
+            # logger.error(f"Error in training_generator: {str(e)}")
             raise
 
     logger.info(f"Training stream completed for run_id: {run_id}")

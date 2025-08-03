@@ -2,7 +2,8 @@ node_modules/
 frontend/.next/
 frontend/.env
 backend/.env
+backend/saved_models/
 backend/test.py
 *.log
-__pycache__/
+*/__pycache__/
 *.pyc

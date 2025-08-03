@@ -17,14 +17,11 @@ def main():
     logger.info("Loading data...")
     protein_df = load_protein_data()
     phen_df = load_phenotype_data()
-    logger.info(f"Loaded protein data: {protein_df.shape} and phenotype data: {phen_df.shape}")
 
-    # Optionally run preprocessing for classical ML or exploratory analysis
-    run_classical_ml = True
-    if run_classical_ml:
-        logger.info("Running classical ML preprocessing and analysis...")
-        X, y, class_names = preprocess_data(protein_df, phen_df)
-        logger.info(f"Classical ML preprocessing complete. X shape: {X.shape}, classes: {class_names}")
+    # Optionally run preprocessing for exploratory analysis
+    logger.info("Running classical ML preprocessing and analysis...")
+    X, y, class_names = preprocess_data(protein_df, phen_df)
+    logger.info(f"Classical ML preprocessing complete. X shape: {X.shape}, classes: {class_names}")
 
     # Load and partition data for federated learning
     logger.info("Preparing data for federated learning...")
@@ -43,7 +40,6 @@ def main():
     else:
         logger.info("Starting manual FL simulation...")
         global_model, train_losses, val_losses = run_manual_simulation(client_datasets, num_features, num_classes, num_rounds=Config.n_rounds)
-        # run_manual_simulation(client_datasets, num_features, num_classes, num_rounds=Config.n_rounds)
         logger.info("Manual FL simulation complete")
 
 if __name__ == "__main__":
