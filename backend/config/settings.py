@@ -15,7 +15,7 @@ class Config:
 
     # FL Training setup
     n_clients = 3
-    n_rounds = 10
+    n_rounds = 8
     local_epochs = 4
     label_map = {'Alive': 1, 'Dead': 0}
 
@@ -34,7 +34,7 @@ class Config:
     min_available_clients = 3
 
     # Simulation mode toggle
-    realistic_flower_simulation = True
+    realistic_flower_simulation = False
 
     # Vercel Blob config
     vercel_blob_upload_url = "https://blob.vercel-storage.com/upload"

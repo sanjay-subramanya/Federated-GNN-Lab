@@ -133,7 +133,6 @@ def run_manual_simulation(
     run_id: str = None,
     ):
     set_seeds()
-    logger.info("Starting manual FL simulation...") 
 
     # Initialize global model
     global_model = SAGENet(num_features, hidden_dim=Config.hidden_dim, out_dim=num_classes, dropout=Config.dropout).to(Config.device)

@@ -1,13 +1,15 @@
 
 import torch
 import logging
+import gc
 import random
 import numpy as np
 import pandas as pd
 from collections import defaultdict
 from torch_geometric.data import Data
 from imblearn.over_sampling import SMOTE
-from sklearn.impute import KNNImputer
+from sklearn.neighbors import kneighbors_graph
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split
@@ -54,15 +56,15 @@ def load_and_partition_data(protein_df, phen_df, num_clients=Config.n_clients) -
     columns_to_exclude_from_features = ['id', 'case_id']
     protein_cols = [col for col in protein_cols if col not in columns_to_exclude_from_features]
     
-    X = merged_df[protein_cols].values
+    X = merged_df[protein_cols].values.astype(np.float32)
     y = merged_df['target_label'].values
 
     logger.info(f"Data: X shape before imputation: {X.shape}")
 
     # Imputation
-    imputer = KNNImputer(n_neighbors=Config.n_neighbors_knn_imputer)
+    imputer = SimpleImputer(strategy="mean")
     X = imputer.fit_transform(X)
-    logger.info(f"Data: X shape after KNN Imputation: {X.shape}")
+    logger.info(f"Data: X shape after Imputation: {X.shape}")
 
     # Scaling
     scaler = StandardScaler()
@@ -131,7 +133,9 @@ def load_and_partition_data(protein_df, phen_df, num_clients=Config.n_clients) -
         if len(X_c) >= Config.n_neighbors_graph + 1:
             try:
                 adj = kneighbors_graph(X_c, n_neighbors=Config.n_neighbors_graph, mode='connectivity', include_self=False)
-                edge_index = torch.tensor(np.array(adj.nonzero()), dtype=torch.long).to(Config.device)
+                edge_index_np = np.array(adj.nonzero())
+                edge_index = torch.from_numpy(edge_index_np).long().to(Config.device)
+                del adj, edge_index_np
             except Exception as e:
                 logger.error(f"Client {i+1}: Error creating kneighbors_graph: {e}. Edge index set to None.")
         else:
@@ -150,11 +154,11 @@ def load_and_partition_data(protein_df, phen_df, num_clients=Config.n_clients) -
         class_weights = None
         if train_mask.sum().item() > 0 and len(np.unique(y_c[idx_train])) > 1:
             class_weights_np = compute_class_weight('balanced', classes=np.unique(y_c[idx_train]), y=y_c[idx_train])
-            class_weights = torch.tensor(class_weights_np, dtype=torch.float).to(Config.device)
+            class_weights = torch.tensor(class_weights_np, dtype=torch.float32).to(Config.device)
         else:
             # Fallback for clients with single class or no training samples
             logger.warning(f"Client {i+1}: Cannot compute balanced class weights for training data (only one class or no samples). Using uniform weights for 2 classes.")
-            class_weights = torch.tensor([1.0, 1.0], dtype=torch.float).to(Config.device)
+            class_weights = torch.tensor([1.0, 1.0], dtype=torch.float32).to(Config.device)
 
         data = DataObj(x=x, edge_index=edge_index, y=y_torch,
                        train_mask=train_mask, val_mask=val_mask,
@@ -164,6 +168,7 @@ def load_and_partition_data(protein_df, phen_df, num_clients=Config.n_clients) -
         logger.info(f"Client {i+1} masks: Train samples={train_mask.sum().item()}, Val samples={val_mask.sum().item()}")
         logger.info(f"Client {i+1} train label distribution: {np.bincount(y_c[idx_train]).tolist() if train_mask.sum().item() > 0 else 'N/A (empty)'}")
         logger.info(f"Client {i+1} val label distribution: {np.bincount(y_c[idx_val]).tolist() if val_mask.sum().item() > 0 else 'N/A (empty)'}")
+        gc.collect()
 
     if not client_datasets:
         logger.critical("No valid client datasets were created. Cannot proceed with FL simulation.")
@@ -174,4 +179,7 @@ def load_and_partition_data(protein_df, phen_df, num_clients=Config.n_clients) -
     num_classes = len(np.unique(y_balanced))
     logger.info(f"Global: num_features={num_features}, num_classes={num_classes}")
 
+    del X, y, X_balanced, y_balanced, merged_df
+    gc.collect()
+    
     return client_datasets, num_features, num_classes

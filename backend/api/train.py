@@ -7,11 +7,11 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Generator
 from data.loader import load_and_partition_data
-# from utils.logging_utils import configure_logging
+from utils.logging_utils import configure_logging
 from trainer.manual_simulation import run_manual_simulation
 
-# configure_logging()
-# logger = logging.getLogger(__name__)
+configure_logging()
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
