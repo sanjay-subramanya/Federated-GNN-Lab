@@ -10,14 +10,12 @@ from data.io import load_protein_data, load_phenotype_data
 
 class AppContext:
     def __init__(self):
-        self.global_model_path = str(Config.model_dir / "global_model_manual.pt")
         self.flwr_model_path = str(Config.model_dir / "flower_fl_model.pth")
         self.protein_df_raw = load_protein_data()
         self.phen_df_raw = load_phenotype_data()
         X_raw, Y_raw, self.merged_df, self.feature_cols = prepare_filtered_data(self.protein_df_raw, self.phen_df_raw, exclude_columns=['id', 'case_id'])
         self.protein_df = self.merged_df[self.feature_cols]
         self.flwr_model = self._load_model(self.flwr_model_path, "saved_models/flower_fl_model.pth")
-        self.global_model = self._load_model(self.global_model_path, "saved_models/global_model_manual.pt")
 
     def _load_model(self, model_path, blob_key: str) -> SAGENet:
         if not isinstance(model_path, str):

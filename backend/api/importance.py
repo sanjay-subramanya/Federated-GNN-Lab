@@ -44,10 +44,7 @@ def calculate_saliency_and_top_features(
 ) -> List[FeatureImportanceEntry]:
     try:
         current_model_path = load_file_from_blob_if_needed(blob_key, current_model_path)
-        if current_model_path == ctx.global_model_path:
-            model = ctx.global_model
-        else:
-            model = ctx._load_model(current_model_path, blob_key)
+        model = ctx._load_model(current_model_path, blob_key)
 
         saliency = Saliency(model)
         input_tensor_for_saliency = X_tensor.clone().detach().requires_grad_(True).to(Config.device)

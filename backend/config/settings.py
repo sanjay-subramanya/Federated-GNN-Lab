@@ -34,12 +34,12 @@ class Config:
     min_available_clients = 3
 
     # Simulation mode toggle
-    realistic_flower_simulation = False
+    realistic_flower_simulation = True
 
     # Vercel Blob config
     vercel_blob_upload_url = "https://blob.vercel-storage.com/upload"
     vercel_blob_delete_url = "https://blob.vercel-storage.com/delete"
     vercel_blob_download_url = "https://blob.vercel-storage.com"
     vercel_blob_token = os.getenv("VERCEL_BLOB_TOKEN")
-    if not vercel_blob_token:
-        raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")
+    # if not vercel_blob_token:
+    #     raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")
