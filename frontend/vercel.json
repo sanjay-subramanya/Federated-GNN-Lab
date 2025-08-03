@@ -1,10 +1,9 @@
 {
   "framework": "nextjs",
-  "root": "frontend",
   "installCommand": "npm install",
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "https://your-backend.onrender.com"
+    "NEXT_PUBLIC_BACKEND_URL": "https://federated-gnn-lab.onrender.com"
   }
 }

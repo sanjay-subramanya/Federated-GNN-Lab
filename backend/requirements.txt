@@ -1,13 +1,15 @@
 # Python 3.12
 torch
 torch-geometric
-captum
 numpy
 pandas
 umap
 imbalanced-learn
 scikit-learn
-flwr
-matplotlib
 fastapi
+pydantic
+requests
 uvicorn
+flwr
+captum
+matplotlib
