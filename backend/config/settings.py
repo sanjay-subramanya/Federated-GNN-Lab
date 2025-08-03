@@ -42,5 +42,5 @@ class Config:
     vercel_blob_delete_url = "https://blob.vercel-storage.com/delete"
     vercel_blob_download_url = "https://blob.vercel-storage.com"
     vercel_blob_token = os.getenv("VERCEL_BLOB_TOKEN")
-    if not vercel_blob_token:
-        raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")
+    # if not vercel_blob_token:
+    #     raise RuntimeError("Missing VERCEL_BLOB_TOKEN in environment variables")
