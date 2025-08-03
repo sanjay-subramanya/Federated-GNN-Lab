@@ -2,6 +2,7 @@ node_modules/
 frontend/.next/
 frontend/.env
 backend/.env
+backend/test.py
 *.log
 __pycache__/
 *.pyc
