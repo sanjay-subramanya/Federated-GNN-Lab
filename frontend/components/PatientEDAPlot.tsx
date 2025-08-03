@@ -4,28 +4,48 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Data as PlotlyData, Layout as PlotlyLayout } from "plotly.js";
 
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+// const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false }) as React.FC<any>;
 
 const STAGE_ORDER = ["Stage I", "Stage II", "Stage III", "Stage IV"];
-const STATUS_ORDER = ["Dead", "Alive"];
-const STATUS_COLORS = {
+const STATUS_ORDER = ["Dead", "Alive"] as const;
+const STATUS_COLORS : Record<(typeof STATUS_ORDER)[number], string> = {
   Dead: "#ff7f0e",
   Alive: "#1f77b4"
 };
 
+interface PatientEntry {
+  id: string;
+  stage: string;
+  age: number;
+  status: "Alive" | "Dead";
+}
+
+interface ViolinTrace extends Partial<Plotly.PlotData> {
+  side?: "positive" | "negative";
+  box?: { visible: boolean };
+  pointpos?: number;
+  jitter?: number;
+  points?: "all" | "outliers" | "suspectedoutliers" | false;
+  spanmode?: "soft" | "hard";
+  scalemode?: "width" | "count";
+}
+
 export default function PatientEDAPlot() {
-  const [data, setData] = useState([]);
-  const [filter, setFilter] = useState("all");
+  const [data, setData] = useState<PatientEntry[]>([]);;
+  const [filter, setFilter] = useState<"all" | "alive" | "dead">("all");
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/eda`)
       .then((res) => res.json())
-      .then((json) => setData(json))
+      .then((json: PatientEntry[]) => setData(json))
       .catch((err) => console.error("Failed to fetch EDA data:", err));
   }, []);
 
-  const traces = [];
+  const traces : ViolinTrace[] = [];
+
   STAGE_ORDER.forEach((stage) => {
     STATUS_ORDER.forEach((status) => {
       let filtered = data.filter(

@@ -119,14 +119,14 @@ export default function UMAPViewer({ runId }: { runId?: string }) {
     return traces;
   };
 
-  const layout: PlotlyLayout = {
+  const layout: Partial<PlotlyLayout> = {
     title: {
       text: colorMode === "source"
         ? "Patient Embedding Space (UMAP) - All Models"
         : `UMAP - ${selectedModel === "global" ? "Global Model" : `Client ${selectedModel.split('_')[1]}`}`,
     },
     hovermode: "closest",
-    uirevision: true,
+    uirevision: "static",
     xaxis: { title: { text: "UMAP Dimension 1" } },
     yaxis: { title: { text: "UMAP Dimension 2" } },
     margin: { l: 40, r: 40, b: 40, t: 80 },

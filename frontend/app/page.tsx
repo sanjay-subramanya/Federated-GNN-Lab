@@ -178,7 +178,13 @@ export default function HomePage() {
       if (!allReady) {
         const failedEndpoints = results
           .filter((r) => !r.ok)
-          .map((r) => `${r.endpoint}: ${r.status || r.error?.message || "Unknown error"}`)
+          .map((r) => {
+            const errorMessage =
+              typeof r.error === "object" && r.error !== null && "message" in r.error
+                ? (r.error as { message: string }).message
+                : "Unknown error";
+            return `${r.endpoint}: ${r.status || errorMessage}`;
+          })
           .join("; ");
         console.log("DEBUG: Failed endpoints:", failedEndpoints);
         setError(`Failed to load analysis data: ${failedEndpoints}`);
