@@ -18,7 +18,6 @@ def main():
     protein_df = load_protein_data()
     phen_df = load_phenotype_data()
 
-    # Optionally run preprocessing for exploratory analysis
     logger.info("Running classical ML preprocessing and analysis...")
     X, y, class_names = preprocess_data(protein_df, phen_df)
     logger.info(f"Classical ML preprocessing complete. X shape: {X.shape}, classes: {class_names}")
