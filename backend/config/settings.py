@@ -43,4 +43,4 @@ class Config:
     vercel_blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
     if not vercel_blob_token:
         raise ValueError("BLOB_READ_WRITE_TOKEN environment variable not set")
-    vercel_blob_store_url = "https://spt8si33dk0plzsy.public.blob.vercel-storage.com" #os.getenv("BLOB_STORE_BASE_URL")
+    vercel_blob_store_url = os.getenv("BLOB_STORE_BASE_URL")
