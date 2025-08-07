@@ -40,7 +40,10 @@ interface RoundDivergenceData {
   };
 }
 
-export default function DivergenceViewer({ runId }: { runId?: string }) {
+export default function DivergenceViewer({ runId, onLoadComplete}: {
+    runId?: string;
+    onLoadComplete?: () => void;
+  }) {
   const [divergenceHistory, setDivergenceHistory] = useState<RoundDivergenceData[] | null>(null);
   const [viewMode, setViewMode] = useState<"line" | "heatmap" | "table">("line");
   const [selectedRoundIndex, setSelectedRoundIndex] = useState<number>(-1);
@@ -82,6 +85,7 @@ export default function DivergenceViewer({ runId }: { runId?: string }) {
     }
 
     setDivergenceHistory(json);
+    onLoadComplete?.();
   } catch (err) {
     console.warn("[DivergenceViewer] Failed to fetch:", err);
   }

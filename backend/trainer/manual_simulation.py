@@ -97,13 +97,13 @@ def save_final_models_and_metadata(
 
     global_model_path = model_dir / "global_model_manual.pt"
     torch.save({"model_state_dict": global_model.state_dict()}, global_model_path)
-    upload_file_to_blob(f"{blob_prefix}/global_model_manual.pt", str(global_model_path))
+    # upload_file_to_blob(f"{blob_prefix}/global_model_manual.pt", str(global_model_path))
     logger.info(f"Saved final global model (manual simulation) to {global_model_path}")
 
     for i, client_model in enumerate(client_models):
         client_model_path = model_dir / f"client_{i+1}_model.pt"
         torch.save({"model_state_dict": client_model.state_dict()}, client_model_path)
-        upload_file_to_blob(f"{blob_prefix}/client_{i+1}_model.pt", str(client_model_path))
+        # upload_file_to_blob(f"{blob_prefix}/client_{i+1}_model.pt", str(client_model_path))
         logger.info(f"Saved client {i+1} model to {client_model_path}")
 
     metadata_path = model_dir / "_train_metadata.json"
@@ -115,12 +115,12 @@ def save_final_models_and_metadata(
     }
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=4)
-    upload_file_to_blob(f"{blob_prefix}/_train_metadata.json", str(metadata_path))
+    # upload_file_to_blob(f"{blob_prefix}/_train_metadata.json", str(metadata_path))
 
     divergence_path = model_dir / "_divergence_metrics.json"
     with open(divergence_path, "w") as f:
         json.dump(divergence_history, f, indent=4)
-    upload_file_to_blob(f"{blob_prefix}/_divergence_metrics.json", str(divergence_path))
+    # upload_file_to_blob(f"{blob_prefix}/_divergence_metrics.json", str(divergence_path))
     logger.info(f"Saved divergence metrics to {divergence_path}")
 
 

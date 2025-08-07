@@ -1,6 +1,6 @@
-import umap
 import torch
 import logging
+import umap
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Request

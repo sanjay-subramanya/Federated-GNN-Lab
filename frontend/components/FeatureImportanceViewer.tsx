@@ -41,7 +41,10 @@ interface FeatureImportanceResponse {
   overlap_with_global?: FeatureOverlap; // NEW: Make it optional, as it's only for client models
 }
 
-export default function FeatureImportanceViewer({ runId }: { runId?: string }) {
+export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
+    runId?: string;
+    onLoadComplete?: () => void;
+  }) {
   const [selectedModel, setSelectedModel] = useState<string>("global");
   const [featureImportances, setFeatureImportances] = useState<FeatureImportanceEntry[]>([]);
   const [overlapData, setOverlapData] = useState<FeatureOverlap | null>(null); // NEW: State for overlap data
@@ -89,13 +92,14 @@ export default function FeatureImportanceViewer({ runId }: { runId?: string }) {
       const data: FeatureImportanceResponse = await response.json();
       setFeatureImportances(data.feature_importances);
       setOverlapData(data.overlap_with_global || null); // NEW: Set overlap data
+      if (onLoadComplete) onLoadComplete();
     } catch (e: any) {
       console.error("Failed to fetch feature importances:", e);
       setError(`Failed to load feature importances: ${e.message}`);
     } finally {
       setLoading(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, runId, onLoadComplete]);
 
   useEffect(() => {
     fetchFeatureImportances();

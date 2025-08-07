@@ -5,5 +5,5 @@ backend/.env
 backend/test.py
 backend/saved_models/
 *.log
-*/__pycache__/
+*/__pycache__/*
 *.pyc

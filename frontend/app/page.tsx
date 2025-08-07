@@ -61,6 +61,9 @@ export default function HomePage() {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [pollingAttempts, setPollingAttempts] = useState(0);
   const maxPollingAttempts = 24; // 120 seconds at 5000ms interval
+  const [showDivergence, setShowDivergence] = useState(false);
+  const [showImportance, setShowImportance] = useState(false);
+  const [showUMAP, setShowUMAP] = useState(false);
 
   useEffect(() => {
     console.log("DEBUG: Initializing HomePage, fetching patients (check browser console)");
@@ -139,63 +142,28 @@ export default function HomePage() {
     }
     console.log("DEBUG: Checking analysis readiness for runId:", runId);
     try {
-      const endpoints = [
-        `/dissect/embeddings?run_id=${encodeURIComponent(runId)}`,
-        `/dissect/feature-importance?run_id=${encodeURIComponent(runId)}&model_name=global&top_k=20`,
-        `/dissect/divergence-history?run_id=${encodeURIComponent(runId)}`,
-      ];
-      const results = await Promise.all(
-        endpoints.map(async (endpoint) => {
-          try {
-            const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}${endpoint}`;
-            const res = await fetch(url, {
-              method: "GET",
-              headers: { "Content-Type": "application/json" },
-            });
-            console.log(`DEBUG: Endpoint ${url} status: ${res.status} ${res.statusText}`);
-            if (res.ok) {
-              try {
-                const data = await res.json();
-                console.log(`DEBUG: Endpoint ${url} response data:`, data);
-                return { ok: true, endpoint, data };
-              } catch (err) {
-                console.warn(`DEBUG: Endpoint ${url} returned non-JSON response:`, err);
-                return { ok: true, endpoint, data: null }; // Treat as success if non-JSON but 200
-              }
-            } else {
-              const errorBody = await res.text().catch(() => "No body available");
-              console.error(`DEBUG: Endpoint ${url} failed with body:`, errorBody);
-              return { ok: false, endpoint, status: res.status, body: errorBody };
-            }
-          } catch (err) {
-            console.error(`DEBUG: Error fetching ${endpoint}:`, err);
-            return { ok: false, endpoint, error: err };
-          }
-        })
-      );
-      const allReady = results.every((result) => result.ok);
-      console.log("DEBUG: Analysis readiness results:", results, "All ready:", allReady);
-      if (!allReady) {
-        const failedEndpoints = results
-          .filter((r) => !r.ok)
-          .map((r) => {
-            const errorMessage =
-              typeof r.error === "object" && r.error !== null && "message" in r.error
-                ? (r.error as { message: string }).message
-                : "Unknown error";
-            return `${r.endpoint}: ${r.status || errorMessage}`;
-          })
-          .join("; ");
-        console.log("DEBUG: Failed endpoints:", failedEndpoints);
-        setError(`Failed to load analysis data: ${failedEndpoints}`);
+      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/dissect/status?run_id=${encodeURIComponent(runId)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error("DEBUG: /dissect/status failed:", res.status, res.statusText);
+        setError("Failed to check analysis readiness");
+        return false;
       }
-      return allReady;
-    } catch (error) {
-      console.error("DEBUG: Error in checkAnalysisReady:", error);
-      setError("Failed to check analysis readiness: Network or server error");
-      return false;
-    }
-  };
+      const data = await res.json();
+      console.log("DEBUG: /dissect/status response:", data);
+
+      if (data.ready) {
+        return true;
+      } else {
+        console.log("DEBUG: Analysis not ready yet");
+        return false;
+      }
+      } catch (err) {
+        console.error("DEBUG: Error in checkAnalysisReady:", err);
+        setError("Network error while checking analysis readiness");
+        return false;
+      }
+    };
 
   const handleTrainingComplete = useCallback(async (runId: string) => {
     console.log("DEBUG: handleTrainingComplete called with runId:", runId);
@@ -497,20 +465,6 @@ export default function HomePage() {
                 </motion.div>
               </ErrorBoundary>
 
-              <ErrorBoundary componentName="FeatureImportanceViewer">
-                <motion.div
-                  key="feature"
-                  className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Feature Importance</h2>
-                  <FeatureImportanceViewer runId={currentRunId} />
-                </motion.div>
-              </ErrorBoundary>
-
               <ErrorBoundary componentName="DivergenceViewer">
                 <motion.div
                   key="divergence"
@@ -521,9 +475,24 @@ export default function HomePage() {
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
                   <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Divergence Analysis</h2>
-                  <DivergenceViewer runId={currentRunId} />
+                  <DivergenceViewer runId={currentRunId} onLoadComplete={() => setShowImportance(true)} />
                 </motion.div>
               </ErrorBoundary>
+
+              <ErrorBoundary componentName="FeatureImportanceViewer">
+                <motion.div
+                  key="feature"
+                  className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Feature Importance</h2>
+                  <FeatureImportanceViewer runId={currentRunId} onLoadComplete={() => setShowUMAP(true)} />
+                </motion.div>
+              </ErrorBoundary>
+
             </>
           )}
         </AnimatePresence>

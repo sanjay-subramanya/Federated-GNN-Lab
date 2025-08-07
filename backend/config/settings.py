@@ -37,10 +37,7 @@ class Config:
     realistic_flower_simulation = False
 
     # Vercel Blob config
-    # vercel_blob_upload_url = "https://blob.vercel-storage.com/upload"
-    # vercel_blob_delete_url = "https://blob.vercel-storage.com/delete"
-    # vercel_blob_download_url = "https://blob.vercel-storage.com"
     vercel_blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+    vercel_blob_store_url = os.getenv("BLOB_STORE_BASE_URL")
     if not vercel_blob_token:
         raise ValueError("BLOB_READ_WRITE_TOKEN environment variable not set")
-    vercel_blob_store_url = os.getenv("BLOB_STORE_BASE_URL")

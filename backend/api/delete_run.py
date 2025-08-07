@@ -1,25 +1,22 @@
 import logging
 import shutil
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
 
 from config.settings import Config
 from utils.blob_utils import delete_run_from_blob
 from utils.logging_utils import configure_logging
+from api.status import RunIdRequest
 
 configure_logging()
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-class DeleteRunRequest(BaseModel):
-    run_id: str
-
 @router.post("/delete-run")
-async def delete_run(request: Request, req: DeleteRunRequest):
+async def delete_run(request: Request, req: RunIdRequest):
     run_id = req.run_id.strip()
     try:
-        delete_run_from_blob(run_id)
+        # delete_run_from_blob(run_id)
         
         # Also delete local copy if exists
         run_folder = Config.model_dir / run_id
