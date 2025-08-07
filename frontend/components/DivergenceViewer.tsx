@@ -57,10 +57,10 @@ export default function DivergenceViewer({ runId, onLoadComplete}: {
 
   useEffect(() => {
     const fetchMetadata = async () => {
+      if (!runId) return;
       try {
-        const metaUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/train-metadata`;
-        const response = await fetch(metaUrl);
-        const data = await response.json();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
+        const data = await res.json();
         setNumClients(data.num_clients);
         setNumRounds(data.num_rounds);
       } catch (err) {

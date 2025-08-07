@@ -55,7 +55,6 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
   useEffect(() => {
     const fetchTrainMetadata = async () => {
       if (!runId) return;
-  
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
         const data = await res.json();

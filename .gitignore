@@ -3,7 +3,7 @@ frontend/.next/
 frontend/.env
 backend/.env
 backend/test.py
-backend/saved_models/
+backend/saved_models/*
 *.log
 */__pycache__/*
 *.pyc
