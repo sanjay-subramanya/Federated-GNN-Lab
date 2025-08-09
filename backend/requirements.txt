@@ -1,9 +1,9 @@
 # Python 3.12
 torch
 torch-geometric
+umap-learn
 numpy
 pandas
-umap
 imbalanced-learn
 scikit-learn
 fastapi
