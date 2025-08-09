@@ -27,6 +27,8 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Calendar, Flame, BarChart, CheckCircle } from "lucide-react";
+import { NEXT_PUBLIC_BACKEND_URL } from "@/lib/config";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false }) as React.FC<any>;
 
@@ -40,12 +42,12 @@ interface RoundDivergenceData {
   };
 }
 
-export default function DivergenceViewer({ runId, onLoadComplete}: {
-    runId?: string;
-    onLoadComplete?: () => void;
-  }) {
+export default function DivergenceViewer({ runId, onLoadComplete }: {
+  runId?: string;
+  onLoadComplete?: () => void;
+}) {
   const [divergenceHistory, setDivergenceHistory] = useState<RoundDivergenceData[] | null>(null);
-  const [viewMode, setViewMode] = useState<"line" | "heatmap" | "table">("line");
+  const [viewMode, setViewMode] = useState<"line" | "heatmap" | "table">("heatmap");
   const [selectedRoundIndex, setSelectedRoundIndex] = useState<number>(-1);
   const [scaleMode, setScaleMode] = useState<"fixed" | "dynamic">("fixed");
   const [deltaMode, setDeltaMode] = useState<boolean>(false);
@@ -59,7 +61,7 @@ export default function DivergenceViewer({ runId, onLoadComplete}: {
     const fetchMetadata = async () => {
       if (!runId) return;
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
+        const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
         const data = await res.json();
         setNumClients(data.num_clients);
         setNumRounds(data.num_rounds);
@@ -68,73 +70,70 @@ export default function DivergenceViewer({ runId, onLoadComplete}: {
       }
     };
     fetchMetadata();
-  }, []);
-
-  const fetchData = useCallback(async () => {
-  if (!runId) return;  // ✅ Prevent premature call
-
-  try {
-    const baseUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/dissect/divergence-history`;
-    const url = `${baseUrl}?run_id=${encodeURIComponent(runId)}`;
-    const response = await fetch(url);
-    const json = await response.json();
-
-    if (!Array.isArray(json)) {
-      console.warn("[DivergenceViewer] Expected array but got:", json);
-      return;
-    }
-
-    setDivergenceHistory(json);
-    onLoadComplete?.();
-  } catch (err) {
-    console.warn("[DivergenceViewer] Failed to fetch:", err);
-  }
   }, [runId]);
 
+  const fetchData = useCallback(async () => {
+    if (!runId) return;
+    try {
+      const baseUrl = `${NEXT_PUBLIC_BACKEND_URL}/dissect/divergence-history`;
+      const url = `${baseUrl}?run_id=${encodeURIComponent(runId)}`;
+      const response = await fetch(url);
+      const json = await response.json();
+
+      if (!Array.isArray(json)) {
+        console.warn("[DivergenceViewer] Expected array but got:", json);
+        return;
+      }
+
+      setDivergenceHistory(json);
+      onLoadComplete?.();
+    } catch (err) {
+      console.warn("[DivergenceViewer] Failed to fetch:", err);
+    }
+  }, [runId, onLoadComplete]);
+
   useEffect(() => {
-  if (!runId) return; // Wait for runId before attempting fetch
-  fetchData();
+    if (!runId) return;
+    fetchData();
   }, [fetchData, runId]);
 
   useEffect(() => {
-  // Clear any existing interval first
     if (playIntervalRef.current) {
-        clearInterval(playIntervalRef.current);
-        playIntervalRef.current = null;
+      clearInterval(playIntervalRef.current);
+      playIntervalRef.current = null;
     }
     if (isPlaying && divergenceHistory) {
-        playIntervalRef.current = setInterval(() => {
+      playIntervalRef.current = setInterval(() => {
         setSelectedRoundIndex(prev => {
-            const next = prev + 1;
-            if (next >= divergenceHistory.length) {
-            setIsPlaying(false); // stop
+          const next = prev + 1;
+          if (next >= divergenceHistory.length) {
+            setIsPlaying(false);
             return prev;
-            }
-            return next;
+          }
+          return next;
         });
-        }, 1000);
+      }, 1000);
     }
-    // Clean up on unmount
     return () => {
-        if (playIntervalRef.current) {
+      if (playIntervalRef.current) {
         clearInterval(playIntervalRef.current);
         playIntervalRef.current = null;
-        }
+      }
     };
-    }, [isPlaying, divergenceHistory]);
+  }, [isPlaying, divergenceHistory]);
 
   if (!divergenceHistory) {
     return (
       <Card>
-      <CardHeader><CardTitle>Client Divergence Tracker</CardTitle></CardHeader>
-      <CardContent>
-        <Skeleton className="h-64 w-full" />
-        {numClients !== null && numRounds !== null && (
-          <p className="text-muted-foreground text-center mt-4">
-            Expecting {numClients} clients over {numRounds} rounds…
-          </p>
-        )}
-      </CardContent>
+        <CardHeader><CardTitle>Client Divergence Tracker</CardTitle></CardHeader>
+        <CardContent>
+          <Skeleton className="h-64 w-full" />
+          {numClients !== null && numRounds !== null && (
+            <p className="text-muted-foreground text-center mt-4">
+              Expecting {numClients} clients over {numRounds} rounds…
+            </p>
+          )}
+        </CardContent>
       </Card>
     );
   }
@@ -223,159 +222,165 @@ export default function DivergenceViewer({ runId, onLoadComplete}: {
     }),
   ];
 
-  const HeatmapLegend = React.memo(({ zMin, zMax }: { zMin: number, zMax: number }) => (
-    <div className="flex flex-col text-sm text-muted-foreground ml-2">
-        <Label className="mb-2">Legend:</Label>
-        <div className="h-40 w-6 bg-gradient-to-b from-yellow-50 via-orange-400 to-red-700 border" />
-        <div className="flex flex-col text-center mt-1">
-        <span>{zMax.toFixed(3)}</span>
-        <span className="text-xs text-gray-400">Divergence</span>
-        <span>{zMin.toFixed(3)}</span>
-        </div>
-    </div>
-    ));
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Client Divergence Tracker</CardTitle>
-        <div className="text-sm text-muted-foreground mt-2 space-y-1">
-          <div>📅 <b>Round:</b> {roundData.round}</div>
-          <div>🔥 <b>Most Divergent:</b> {insights.maxClient} - {insights.maxLayer} ({insights.maxVal.toFixed(4)})</div>
-          <div>📊 <b>Avg Divergence:</b> {insights.avg.toFixed(4)}</div>
-          <div>✅ <b>Clients &lt; 0.01:</b> {insights.convergedCount}/{(numClients ?? clientIds.length) * layerNames.length}</div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-[#00C1D5]" />
+            <span><b>Round:</b> {roundData.round}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Flame className="h-4 w-4 text-[#00C1D5]" />
+            <span><b>Most Divergent:</b> {insights.maxClient} - {insights.maxLayer} ({insights.maxVal.toFixed(4)})</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <BarChart className="h-4 w-4 text-[#00C1D5]" />
+            <span><b>Avg Divergence:</b> {insights.avg.toFixed(4)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-[#00C1D5]" />
+            <span><b>Clients &lt; 0.01:</b> {insights.convergedCount}/{(numClients ?? clientIds.length) * layerNames.length}</span>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-4 items-center">
-          <Label>View:</Label>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-            <TabsList>
-              <TabsTrigger value="line">📈 Line</TabsTrigger>
-              <TabsTrigger value="heatmap">🔥 Heatmap</TabsTrigger>
-              <TabsTrigger value="table">📋 Table</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        
-        <div className="text-xs text-muted-foreground mt-1 space-y-1">
-            <div>🔁 <b>Delta Mode:</b> Highlights how much each client-layer's divergence <i>changed</i> from the previous round. Red = drifted more, Blue = converged.</div>
-            <div>📏 <b>Scale Mode:</b> 
-                <ul className="list-disc pl-4">
-                <li><b>Fixed:</b> Uses same range (0–0.05) across all rounds — good for global comparison.</li>
-                <li><b>Dynamic:</b> Auto-scales based on each round’s actual divergence — good for detail per round.</li>
-                </ul>
-            </div>
-            <div>▶️ <b>Play:</b> Animates round-by-round heatmap. <i>Stops at last round automatically.</i></div>
-            </div>
-
-          {viewMode !== "line" && (
-            <>
-              <Label>Round:</Label>
-              <Select value={String(roundIndex)} onValueChange={v => setSelectedRoundIndex(parseInt(v))}>
-                <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {divergenceHistory.map((d, i) => (
-                    <SelectItem key={i} value={String(i)}>R{d.round}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => {
-                    if (isPlaying) {
-                    setIsPlaying(false); // pause
-                    } else {
-                    if (selectedRoundIndex >= divergenceHistory.length - 1) {
-                        setSelectedRoundIndex(0); // restart from beginning
-                    }
-                    setIsPlaying(true); // play
-                    }
-                }}
-                variant="outline"
-                >
-                {isPlaying ? "⏸ Pause" : "▶️ Play"}
-                </Button>
-              <Button variant="ghost" onClick={() => setDeltaMode(!deltaMode)}>
-                {deltaMode ? "🟢 Delta Mode: ON" : "⚪ Delta Mode: OFF"}
-              </Button>
-              <Tabs value={scaleMode} onValueChange={(v) => setScaleMode(v as any)}>
+      <CardContent>
+        <div className="border border-gray-200 shadow-md rounded-lg p-4">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              {/* <Label className="text-[#FFFFFF] font-medium">View:</Label> */}
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
                 <TabsList>
-                  <TabsTrigger value="fixed">Fixed (0–0.05)</TabsTrigger>
-                  <TabsTrigger value="dynamic">Dynamic</TabsTrigger>
+                  <TabsTrigger value="heatmap">🔥 Heatmap</TabsTrigger>
+                  <TabsTrigger value="line">📈 Plot</TabsTrigger>
+                  <TabsTrigger value="table">📋 Table</TabsTrigger>
                 </TabsList>
               </Tabs>
-            </>
-          )}
-        </div>
+            </div>
 
-        {viewMode === "line" && (
-          <Plot
-            data={lineTraces}
-            layout={{
-              xaxis: { title: "Round", dtick: 1 },
-              yaxis: { title: "Global Loss", side: "left" },
-              yaxis2: { title: "Client Div", overlaying: "y", side: "right" },
-              height: 400,
-              legend: { orientation: "h" },
-            }}
-            config={{ responsive: true }}
-          />
-        )}
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div>🔁 <b>Delta Mode:</b> Highlights how much each client-layer's divergence <i>changed</i> from the previous round. Red = drifted more, Blue = converged.</div>
+              <div>📏 <b>Scale Mode:</b> 
+                <ul className="list-disc pl-4">
+                  <li><b>Fixed:</b> Uses same range (0–0.05) across all rounds — good for global comparison.</li>
+                  <li><b>Dynamic:</b> Auto-scales based on each round’s actual divergence — good for detail per round.</li>
+                </ul>
+              </div>
+              <div>▶️ <b>Play:</b> Animates round-by-round heatmap. <i>Stops at last round automatically.</i></div>
+            </div>
 
-        {viewMode === "heatmap" && (
-        <div className="flex gap-4 items-start">
-            <div className="w-full max-w-[calc(100%-60px)]">
-            <Plot
-                data={[{
-                z: heatmapZ,
-                x: layerNames,
-                y: clientIds,
-                type: "heatmap",
-                colorscale: deltaMode ? "RdBu" : "YlOrRd",
-                zmin: zMin,
-                zmax: zMax,
-                }]}
+            {viewMode !== "line" && (
+              <div className="flex items-center gap-4">
+                <Select value={String(roundIndex)} onValueChange={v => setSelectedRoundIndex(parseInt(v))}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divergenceHistory.map((d, i) => (
+                      <SelectItem key={i} value={String(i)}>Round {d.round}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    if (isPlaying) {
+                      setIsPlaying(false);
+                    } else {
+                      if (selectedRoundIndex >= divergenceHistory.length - 1) {
+                        setSelectedRoundIndex(0);
+                      }
+                      setIsPlaying(true);
+                    }
+                  }}
+                  variant="outline"
+                >
+                  {isPlaying ? "⏸ Pause" : "▶️ Play"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setDeltaMode(!deltaMode)}
+                >
+                  {deltaMode ? "🟢 Delta Mode: ON" : "⚪ Delta Mode: OFF"}
+                </Button>
+                <Tabs value={scaleMode} onValueChange={(v) => setScaleMode(v as any)}>
+                  <TabsList>
+                    <TabsTrigger value="fixed">Fixed (0–0.05)</TabsTrigger>
+                    <TabsTrigger value="dynamic">Dynamic</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            )}
+
+            {viewMode === "line" && (
+              <Plot
+                data={lineTraces}
                 layout={{
-                title: `Client vs Layer ${deltaMode ? "ΔDivergence" : "Divergence"} (Round ${roundData.round})`,
-                height: 400,
-                margin: { t: 40, b: 80 },
-                uirevision: 'heatmap-fixed-layout',
+                  xaxis: { title: "Round", dtick: 1 },
+                  yaxis: { title: "Global Loss", side: "left" },
+                  yaxis2: { title: "Client Div", overlaying: "y", side: "right" },
+                  height: 400,
+                  legend: { orientation: "h" }
                 }}
                 config={{ responsive: true }}
-            />
-            </div>
-            <HeatmapLegend zMin={zMin} zMax={zMax} />
-        </div>
-        )}
+              />
+            )}
 
-        {viewMode === "table" && (
-          <div className="overflow-auto max-h-[400px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  {layerNames.map(layer => (
-                    <TableHead key={layer}>{layer}</TableHead>
-                  ))}
-                  <TableHead>Avg</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clientIds.map(client => {
-                  const vals = layerNames.map(l => roundData.client_divergence[client]?.[l] ?? NaN);
-                  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                  return (
-                    <TableRow key={client}>
-                      <TableCell>{client}</TableCell>
-                      {vals.map((v, i) => <TableCell key={i}>{v.toFixed(4)}</TableCell>)}
-                      <TableCell className="font-semibold">{avg.toFixed(4)}</TableCell>
+            {viewMode === "heatmap" && (
+              <div className="flex gap-4 items-start">
+                <div className="w-full max-w-[calc(100%-60px)]">
+                  <Plot
+                    data={[{
+                      z: heatmapZ,
+                      x: layerNames,
+                      y: clientIds,
+                      type: "heatmap",
+                      colorscale: deltaMode ? "RdBu" : "YlOrRd",
+                      zmin: zMin,
+                      zmax: zMax,
+                    }]}
+                    layout={{
+                      title: `Client vs Layer ${deltaMode ? "ΔDivergence" : "Divergence"} (Round ${roundData.round})`,
+                      height: 400,
+                      margin: { t: 40, b: 80 },
+                      uirevision: 'heatmap-fixed-layout'
+                    }}
+                    config={{ responsive: true }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {viewMode === "table" && (
+              <div className="overflow-auto max-h-[400px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      {layerNames.map(layer => (
+                        <TableHead key={layer}>{layer}</TableHead>
+                      ))}
+                      <TableHead>Avg</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {clientIds.map(client => {
+                      const vals = layerNames.map(l => roundData.client_divergence[client]?.[l] ?? NaN);
+                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                      return (
+                        <TableRow key={client}>
+                          <TableCell>{client}</TableCell>
+                          {vals.map((v, i) => <TableCell key={i}>{v.toFixed(4)}</TableCell>)}
+                          <TableCell className="font-semibold">{avg.toFixed(4)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

@@ -8,7 +8,7 @@ class Config:
     device = "cpu"
     
     # Data preprocessing
-    n_neighbors_knn_imputer = 5
+    n_neighbors_knn_imputer = 3
     random_seed = 30
     n_neighbors_graph = 5
     test_size = 0.2
@@ -34,7 +34,7 @@ class Config:
     min_available_clients = 3
 
     # Simulation mode toggle
-    realistic_flower_simulation = False
+    flower_simulation = False
 
     # Vercel Blob config
     vercel_blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")

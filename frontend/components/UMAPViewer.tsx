@@ -6,8 +6,10 @@ import { Data as PlotlyData, Layout as PlotlyLayout, Config as PlotlyConfig } fr
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion, AnimatePresence } from "framer-motion";
+import { NEXT_PUBLIC_BACKEND_URL } from "@/lib/config";
 
 // Dynamically import Plot from react-plotly.js for client-side rendering
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
@@ -26,7 +28,7 @@ type EmbeddingsDataMap = {
 export default function UMAPViewer({ runId }: { runId?: string }) {
   const [allEmbeddingsData, setAllEmbeddingsData] = useState<EmbeddingsDataMap>({});
   const [selectedModel, setSelectedModel] = useState<string>("global");
-  const [colorMode, setColorMode] = useState<"class" | "source">("class");
+  const [colorMode, setColorMode] = useState<"class" | "source">("source");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export default function UMAPViewer({ runId }: { runId?: string }) {
       setLoading(true);
       setError(null);
       try {
-        const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/dissect/embeddings?run_id=${encodeURIComponent(runId)}`;
+        const url = `${NEXT_PUBLIC_BACKEND_URL}/dissect/embeddings?run_id=${encodeURIComponent(runId)}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const rawResponse = await response.json();
@@ -122,7 +124,7 @@ export default function UMAPViewer({ runId }: { runId?: string }) {
   const layout: Partial<PlotlyLayout> = {
     title: {
       text: colorMode === "source"
-        ? "Patient Embedding Space (UMAP) - All Models"
+        ? "Patient Embeddings - All Models"
         : `UMAP - ${selectedModel === "global" ? "Global Model" : `Client ${selectedModel.split('_')[1]}`}`,
     },
     hovermode: "closest",
@@ -148,57 +150,65 @@ export default function UMAPViewer({ runId }: { runId?: string }) {
   if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-xl font-semibold mb-4 text-center">
-        Patient Embedding Space (UMAP)
-      </h2>
-
-      <div className="mb-4 flex flex-col sm:flex-row justify-center items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="model-select">Select Model:</Label>
-          <Select
-            value={selectedModel}
-            onValueChange={setSelectedModel}
-            disabled={colorMode === "source"}
-          >
-            <SelectTrigger id="model-select" className="w-[180px]">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(allEmbeddingsData).map((modelKey) => (
-                <SelectItem key={modelKey} value={modelKey}>
-                  {modelKey === "global" ? "Global Model" : `Client ${modelKey.split("_")[1]}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Label>Color By:</Label>
-          <RadioGroup
-            value={colorMode}
-            onValueChange={(value: "class" | "source") => setColorMode(value)}
-            className="flex gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="class" id="color-class" />
-              <Label htmlFor="color-class">Class</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="source" id="color-source" />
-              <Label htmlFor="color-source">Source</Label>
-            </div>
-          </RadioGroup>
-        </div>
+  <div className="w-full max-w-5xl mx-auto mt-8 p-4 bg-white shadow-md rounded-lg">
+    <div className="mb-4 flex flex-col sm:flex-row justify-center items-center gap-4">
+      {/* Color By Toggle */}
+      <div className="flex items-center gap-2">
+        <Label htmlFor="color-mode" className="text-gray-900">
+          Color By:
+        </Label>
+        <Tabs
+          value={colorMode}
+          onValueChange={value => setColorMode(value as "class" | "source")}
+        >
+          <TabsList>
+            <TabsTrigger value="source">Source</TabsTrigger>
+            <TabsTrigger value="class">Class</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <Plot
-        data={generatePlotlyTraces()}
-        layout={layout}
-        config={config}
-        style={{ width: "100%", height: "500px" }}
-      />
+      {/* Animated model dropdown */}
+      <AnimatePresence initial={false}>
+        {colorMode === "class" && (
+          <motion.div
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, y: -12, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -12, height: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            <Label htmlFor="model-select" className="text-gray-900">
+              Select Model:
+            </Label>
+            <Select
+              value={selectedModel}
+              onValueChange={setSelectedModel}
+            >
+              <SelectTrigger id="model-select" className="w-[180px] text-gray-900">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.keys(allEmbeddingsData).map(modelKey => (
+                  <SelectItem key={modelKey} value={modelKey}>
+                    {modelKey === "global"
+                      ? "Global Model"
+                      : `Client ${modelKey.split("_")[1]}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-  );
-}
+
+    <Plot
+      data={generatePlotlyTraces()}
+      layout={layout}
+      config={config}
+      style={{ width: "100%", height: "500px" }}
+    />
+  </div>
+);}

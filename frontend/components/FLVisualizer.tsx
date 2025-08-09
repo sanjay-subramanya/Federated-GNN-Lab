@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { NEXT_PUBLIC_BACKEND_URL } from "@/lib/config";
 
 interface BackendRoundData {
   round: number;
@@ -55,7 +56,7 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
     setCapturedRunId(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/train`, {
+      const response = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/train`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +188,7 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
   return (
     <div className="p-6 border rounded-lg shadow-sm bg-white">
       <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-        🚀 Federated Learning Visualizer
+        🚀 Train & Visualize Now
       </h2>
 
       <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
@@ -200,7 +201,7 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
             onValueChange={(val) => setNumClients(Number(val))}
             disabled={training}
           >
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[100px] text-gray-900">
               <SelectValue placeholder="Clients" />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +223,7 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
             onValueChange={(val) => setNumRounds(Number(val))}
             disabled={training}
           >
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[100px] text-gray-900">
               <SelectValue placeholder="Rounds" />
             </SelectTrigger>
             <SelectContent>
@@ -248,11 +249,11 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
         </p>
       )}
 
-      {capturedRunId && (
+      {/* {capturedRunId && (
         <p className="text-gray-600 text-center mb-4">
           <strong>Run ID:</strong> {capturedRunId}
         </p>
-      )}
+      )} */}
 
       {globalLosses.length > 0 ? (
         <>
@@ -330,9 +331,9 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
         </>
       ) : (
         <p className="text-center text-gray-600 mt-8">
-          Click "Start Training" to visualize federated learning progress.
+          Click "Start Training" to visualize FL progress.
           <br />
-          <strong>Debug Note:</strong> Check browser console (F12) and FastAPI terminal for logs.
+          {/* <strong>Debug Note:</strong> Check browser console (F12) and FastAPI terminal for logs. */}
         </p>
       )}
     </div>

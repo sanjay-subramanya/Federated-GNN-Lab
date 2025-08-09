@@ -1,6 +1,7 @@
 
 import torch
 import logging
+import gc
 import torch.nn.functional as F
 import numpy as np
 from captum.attr import Saliency
@@ -61,6 +62,11 @@ def calculate_saliency_and_top_features(
             importance_scores[feature_name] = feature_attributions_mean[i].item()
 
         sorted_features = sorted(importance_scores.items(), key=lambda item: item[1], reverse=True)
+        
+        del model, input_tensor_for_saliency, saliency
+        del logits, attributions, predicted_classes, feature_attributions_mean
+        gc.collect()
+
         return [{"feature_name": k, "importance": v} for k, v in sorted_features[:k_features]]
     except Exception as e:
         logger.error(f"Error calculating saliency for model {current_model_path}: {e}")
@@ -80,8 +86,7 @@ def get_feature_importance(
         X_processed_np, y_processed_np, class_names_list = preprocess_data(
                 protein_df=ctx.protein_df_raw, phen_df=ctx.phen_df_raw)
         logger.info("Data prepared and preprocessed locally for this request.")
-        X_inference_tensor_local = torch.tensor(X_processed_np, dtype=torch.float32).to(Config.device)
-        y_inference_tensor_local = torch.tensor(y_processed_np, dtype=torch.long).to(Config.device)
+        X_processed_np = X_processed_np.astype(np.float32)
 
         adjacency_matrix = kneighbors_graph(
                 X_processed_np, 
@@ -91,10 +96,12 @@ def get_feature_importance(
                 metric='euclidean'
             )
         coo_matrix = adjacency_matrix.tocoo()
-        edge_index_np = np.stack([coo_matrix.row, coo_matrix.col], axis=0)
+        edge_index_np = np.stack([coo_matrix.row, coo_matrix.col], axis=0).astype(np.int64)
         edge_index_tensor_local = torch.from_numpy(edge_index_np).long().to(Config.device)
         logger.info("Graph edge_index created locally.")
 
+        del adjacency_matrix, coo_matrix, edge_index_np
+        gc.collect()
     except Exception as e:
         logger.error(f"Error during data loading/preprocessing/graph creation: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to prepare data for feature importance: {e}")
@@ -116,6 +123,8 @@ def get_feature_importance(
         global_model_path = current_model_dir / "global_model_manual.pt"
         global_blob_key = f"{blob_prefix}/global_model_manual.pt"
 
+    X_inference_tensor_local = torch.tensor(X_processed_np, dtype=torch.float32).to(Config.device)
+
     current_model_importances = calculate_saliency_and_top_features(
         current_model_path,
         blob_key,
@@ -125,6 +134,8 @@ def get_feature_importance(
         top_k,
         ctx,
     )
+
+    gc.collect()
 
     overlap_data: Optional[FeatureOverlap] = None
     if model_name != "global":
@@ -137,6 +148,7 @@ def get_feature_importance(
             top_k,
             ctx,
         )
+        gc.collect()
         global_top_features_names = {entry["feature_name"] for entry in global_model_importances}
         current_client_top_features_names = {entry["feature_name"] for entry in current_model_importances}
         common_features = list(global_top_features_names.intersection(current_client_top_features_names))
@@ -148,6 +160,10 @@ def get_feature_importance(
             common_features=common_features
         )
         logger.info(f"Overlap with global model calculated: {overlap_percentage:.2f}%")
+
+
+    del X_inference_tensor_local, X_processed_np, edge_index_tensor_local
+    gc.collect()
 
     logger.info(f"Feature importance calculated for {model_name}. Top {top_k} features retrieved.")
     return FeatureImportanceResponse(

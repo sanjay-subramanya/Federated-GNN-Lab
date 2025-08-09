@@ -21,6 +21,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NEXT_PUBLIC_BACKEND_URL } from "@/lib/config";
 
 // Matches the backend's FeatureOverlap Pydantic model
 interface FeatureOverlap {
@@ -38,7 +39,7 @@ interface FeatureImportanceEntry {
 interface FeatureImportanceResponse {
   model_name: string;
   feature_importances: FeatureImportanceEntry[];
-  overlap_with_global?: FeatureOverlap; // NEW: Make it optional, as it's only for client models
+  overlap_with_global?: FeatureOverlap; 
 }
 
 export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
@@ -47,7 +48,7 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
   }) {
   const [selectedModel, setSelectedModel] = useState<string>("global");
   const [featureImportances, setFeatureImportances] = useState<FeatureImportanceEntry[]>([]);
-  const [overlapData, setOverlapData] = useState<FeatureOverlap | null>(null); // NEW: State for overlap data
+  const [overlapData, setOverlapData] = useState<FeatureOverlap | null>(null); 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [numClients, setNumClients] = useState<number | null>(null);
@@ -56,7 +57,7 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
     const fetchTrainMetadata = async () => {
       if (!runId) return;
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
+        const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/train-metadata?run_id=${runId}`);
         const data = await res.json();
         setNumClients(data.num_clients);
       } catch (err) {
@@ -70,7 +71,7 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
     { value: "global", label: "Global Model" },
     ...(numClients ? Array.from({ length: numClients }, (_, i) => ({
       value: `client_${i + 1}`,
-      label: `Client ${i + 1} Model`,
+      label: `Client ${i + 1}`,
     })) : []),
   ];
   
@@ -78,7 +79,7 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
     setLoading(true);
     setError(null);
     try {
-      const baseUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/dissect/feature-importance`;
+      const baseUrl = `${NEXT_PUBLIC_BACKEND_URL}/dissect/feature-importance`;
       const url = new URL(baseUrl);
       url.searchParams.append("model_name", selectedModel);
       url.searchParams.append("top_k", "20");
@@ -90,7 +91,7 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
       }
       const data: FeatureImportanceResponse = await response.json();
       setFeatureImportances(data.feature_importances);
-      setOverlapData(data.overlap_with_global || null); // NEW: Set overlap data
+      setOverlapData(data.overlap_with_global || null);
       if (onLoadComplete) onLoadComplete();
     } catch (e: any) {
       console.error("Failed to fetch feature importances:", e);
@@ -113,18 +114,14 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-8 p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-xl font-semibold mb-4 text-center">
-        Feature Importance Analysis
-      </h2>
-
+    <div className="w-full max-w-5xl mx-auto mt-8 p-4 bg-white shadow-md rounded-lg">
       {/* Model Selection Dropdown */}
       <div className="mb-6 flex justify-center items-center gap-4">
-        <Label htmlFor="feature-model-select" className="font-medium">
+        <Label htmlFor="feature-model-select" className="font-medium text-gray-900">
           Select Model:
         </Label>
         <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger id="feature-model-select" className="w-[200px]">
+          <SelectTrigger id="feature-model-select" className="w-[200px] text-gray-900">
             <SelectValue placeholder="Select a model" />
           </SelectTrigger>
           <SelectContent>

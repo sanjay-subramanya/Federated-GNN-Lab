@@ -32,7 +32,7 @@ def main():
     logger.info(f"Total clients with valid training data: {len(valid_client_ids)} out of {Config.n_clients}")
     
     # Run federated learning simulation
-    if Config.realistic_flower_simulation:
+    if Config.flower_simulation:
         logger.info("Starting Flower FL simulation...")
         run_flower_simulation(client_datasets, num_features, num_classes, Config.n_rounds)
         logger.info("Flower-based FL simulation complete")

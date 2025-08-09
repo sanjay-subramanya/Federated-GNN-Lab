@@ -1,6 +1,7 @@
 import torch
 import logging
 import umap
+import gc
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Request
@@ -29,7 +30,6 @@ class DissectEmbeddingsResponse(BaseModel):
     embeddings: Dict[str, List[EmbeddingPoint]]
 
 @router.get("/dissect/embeddings", response_model=DissectEmbeddingsResponse)
-@lru_cache(maxsize=1)
 def get_dissection_embeddings(
     request: Request,
     run_id: Optional[str] = None
@@ -56,8 +56,8 @@ def get_dissection_embeddings(
         model_paths[f"client_{i}"] = current_model_dir / f"client_{i}_model.pt"
 
     label_map = ctx.merged_df["vital_status.demographic"].loc[ctx.protein_df.index]
-    all_raw_embeddings_list = []
     embedding_model_map = []
+    combined_embeddings = None
 
     for model_name, path in model_paths.items():
         blob_key = f"{blob_prefix}/{path.name}"
@@ -75,26 +75,40 @@ def get_dissection_embeddings(
             logger.info(f"Loading and extracting embeddings from {model_name}...")
             embedding_df = extract_patient_embeddings(model=model, protein_df=ctx.protein_df)
 
-            all_raw_embeddings_list.append(embedding_df.values)
+            embedding_array = embedding_df.values.astype(np.float32)
+            if combined_embeddings is None:
+                combined_embeddings = embedding_array
+            else:
+                combined_embeddings = np.concatenate((combined_embeddings, embedding_array), axis=0)
+
+            # all_raw_embeddings_list.append(embedding_df.values)
             embedding_model_map.append({
                 "model_name": model_name,
                 "count": len(embedding_df),
                 "patient_ids": embedding_df.index.tolist()
             })
 
+            del model, embedding_df, embedding_array
+            gc.collect()
+
         except Exception as e:
             logger.error(f"Unexpected error for {model_name} at {path} (blob: {blob_key}): {e}")
 
-    if not all_raw_embeddings_list:
+    if combined_embeddings.shape[0] == 0 or combined_embeddings.shape[1] == 0:
         logger.warning("No embeddings extracted from any models. Returning empty.")
         return DissectEmbeddingsResponse(embeddings={})
 
-    combined_embeddings = np.vstack(all_raw_embeddings_list)
-    logger.info(f"Fitting UMAP reducer on combined embeddings of shape: {combined_embeddings.shape}")
+    embedding_2d_combined = None
+    try:
+        reducer = umap.UMAP(n_neighbors=12, min_dist=0.1, random_state=10, low_memory=True)
+        embedding_2d_combined = reducer.fit_transform(combined_embeddings)
+        logger.info("UMAP fitting and transformation complete.")
+    except Exception as e:
+        logger.error(f"UMAP fitting failed: {e}")
+        raise HTTPException(status_code=500, detail=f"UMAP fitting failed: {e}")
 
-    reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=10)
-    embedding_2d_combined = reducer.fit_transform(combined_embeddings)
-    logger.info("UMAP fitting and transformation complete.")
+    del combined_embeddings, reducer
+    gc.collect()
 
     final_results: Dict[str, List[EmbeddingPoint]] = {}
     current_idx = 0
@@ -113,6 +127,9 @@ def get_dissection_embeddings(
         final_results[model_name] = points
         current_idx += count
 
-        logger.info("Finished /dissect/embeddings endpoint processing.")
+    logger.info("Finished /dissect/embeddings endpoint processing.")
+    
+    del embedding_2d_combined
+    gc.collect()
 
     return DissectEmbeddingsResponse(embeddings=final_results)

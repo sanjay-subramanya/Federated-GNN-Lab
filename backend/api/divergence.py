@@ -1,4 +1,5 @@
 import json
+import gc
 import logging
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, RootModel
@@ -47,7 +48,10 @@ def get_divergence_history(
     try:
         with open(local_path, "r") as f:
             data = json.load(f)
-        return DivergenceHistoryResponse.model_validate(data)
+        response = DivergenceHistoryResponse.model_validate(data)
+        del data
+        gc.collect()
+        return response
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON from divergence metrics file at {path}: {e}")
         raise HTTPException(status_code=500, detail="Error loading divergence metrics data.")

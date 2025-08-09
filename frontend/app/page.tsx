@@ -11,6 +11,13 @@ import FLVisualizer from "@/components/FLVisualizer";
 import UMAPViewer from "@/components/UMAPViewer";
 import FeatureImportanceViewer from "@/components/FeatureImportanceViewer";
 import DivergenceViewer from "@/components/DivergenceViewer";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp  } from "lucide-react";
+import { NEXT_PUBLIC_BACKEND_URL } from "@/lib/config";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -67,7 +74,7 @@ export default function HomePage() {
 
   useEffect(() => {
     console.log("DEBUG: Initializing HomePage, fetching patients (check browser console)");
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/patients`)
+    fetch(`${NEXT_PUBLIC_BACKEND_URL}/patients`)
       .then((res) => res.json())
       .then((data) => {
         console.log("DEBUG: Patients fetched:", data.patient_ids);
@@ -86,14 +93,13 @@ export default function HomePage() {
     };
   }, []);
 
-  // Cleanup run_id directory on tab/window close
   useEffect(() => {
     const handleUnload = () => {
       if (currentRunId) {
         console.log("DEBUG: Sending delete-run request for runId:", currentRunId, "at", new Date().toISOString());
         const data = JSON.stringify({ run_id: currentRunId, runId: currentRunId });
         const blob = new Blob([data], { type: "application/json" });
-        navigator.sendBeacon(`${process.env.NEXT_PUBLIC_BACKEND_URL}/delete-run`, blob);
+        navigator.sendBeacon(`${NEXT_PUBLIC_BACKEND_URL}/delete-run`, blob);
       } else {
         console.log("DEBUG: No currentRunId, skipping delete-run request at", new Date().toISOString());
       }
@@ -113,10 +119,9 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     setResult(null);
-    // setShapData([]);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/predict`, {
+      const res = await fetch(`${NEXT_PUBLIC_BACKEND_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patient_id }),
@@ -125,7 +130,6 @@ export default function HomePage() {
       const data = await res.json();
       console.log("DEBUG: Prediction result:", data);
       setResult(data);
-
     } catch (err) {
       console.error("DEBUG: Prediction error:", err);
       setError("Failed to fetch prediction or explanation.");
@@ -142,7 +146,7 @@ export default function HomePage() {
     }
     console.log("DEBUG: Checking analysis readiness for runId:", runId);
     try {
-      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/dissect/status?run_id=${encodeURIComponent(runId)}`;
+      const url = `${NEXT_PUBLIC_BACKEND_URL}/dissect/status?run_id=${encodeURIComponent(runId)}`;
       const res = await fetch(url);
       if (!res.ok) {
         console.error("DEBUG: /dissect/status failed:", res.status, res.statusText);
@@ -158,12 +162,12 @@ export default function HomePage() {
         console.log("DEBUG: Analysis not ready yet");
         return false;
       }
-      } catch (err) {
-        console.error("DEBUG: Error in checkAnalysisReady:", err);
-        setError("Network error while checking analysis readiness");
-        return false;
-      }
-    };
+    } catch (err) {
+      console.error("DEBUG: Error in checkAnalysisReady:", err);
+      setError("Network error while checking analysis readiness");
+      return false;
+    }
+  };
 
   const handleTrainingComplete = useCallback(async (runId: string) => {
     console.log("DEBUG: handleTrainingComplete called with runId:", runId);
@@ -176,7 +180,7 @@ export default function HomePage() {
     setCurrentRunId(runId);
     setTrainingDone(true);
     setPollingAttempts(0);
-    setShowAnalysis(false); // Reset to ensure no premature rendering
+    setShowAnalysis(false);
     setError(null);
 
     if (pollingInterval) {
@@ -249,159 +253,174 @@ export default function HomePage() {
     label: `Patient #${index + 1}`,
   }));
 
-  // Debug state changes
   useEffect(() => {
     console.log("DEBUG: State update:", { trainingDone, showAnalysis, currentRunId, pollingAttempts });
   }, [trainingDone, showAnalysis, currentRunId, pollingAttempts]);
 
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
     <div className="flex flex-col items-center min-h-screen py-12 px-4 bg-[#1A1A2E] text-[#E0E7EB] font-sans overflow-x-hidden">
       <h1 className="text-5xl font-bold mb-4 text-[#00C1D5] leading-tight text-center">
-        🧬 Breast Cancer Survival Predictor
+        🌐 Federated Learning Lab
       </h1>
       <p className="text-xl text-[#CBD5E1] opacity-90 max-w-2xl text-center mb-10">
-        Select a patient sample to view the model's predicted survival status and contributing protein features.
+        A dynamic platform for exploring and visualizing federated learning model training and insights.
         <br />
-        <strong>Debug Note:</strong> Check the browser console (F12) for detailed logs.
+        {/* <strong>Debug Note:</strong> Check the browser console (F12) for detailed logs. */}
       </p>
 
-      <div className="w-full max-w-3xl flex flex-col gap-6 p-6 rounded-xl bg-[#1F2937] shadow-lg border border-gray-700/50 mb-12">
-        <div className="mb-4">
-          <label htmlFor="patient-select" className="block text-[#CBD5E1] text-sm font-medium mb-2">
-            Select Patient:
-          </label>
-          <Select
-            id="patient-select"
-            options={patientOptions}
-            onChange={(selected) => setSelectedIndex(selected?.value ?? null)}
-            placeholder="Search or select a patient..."
-            isSearchable
-            styles={{
-              control: (provided, state) => ({
-                ...provided,
-                backgroundColor: '#2D3748',
-                borderColor: state.isFocused ? '#00C1D5' : '#4B5563',
-                color: '#E0E7EB',
-                boxShadow: state.isFocused ? '0 0 0 1px #00C1D5' : 'none',
-                '&:hover': {
-                  borderColor: '#00C1D5',
-                },
-              }),
-              singleValue: (provided) => ({
-                ...provided,
-                color: '#E0E7EB',
-              }),
-              input: (provided) => ({
-                ...provided,
-                color: '#E0E7EB',
-              }),
-              placeholder: (provided) => ({
-                ...provided,
-                color: '#9CA3AF',
-              }),
-              menu: (provided) => ({
-                ...provided,
-                backgroundColor: '#2D3748',
-                borderColor: '#4B5563',
-              }),
-              option: (provided, state) => ({
-                ...provided,
-                backgroundColor: state.isFocused
-                  ? 'rgba(0, 193, 213, 0.2)'
-                  : state.isSelected
-                  ? '#00C1D5'
-                  : 'transparent',
-                color: state.isSelected ? 'white' : '#E0E7EB',
-                '&:active': {
-                  backgroundColor: 'rgba(0, 193, 213, 0.3)',
-                },
-              }),
-              menuList: (provided) => ({
-                ...provided,
-                maxHeight: "200px",
-                overflowY: "auto",
-                '::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '::-webkit-scrollbar-track': {
-                  background: '#1F2937',
-                  borderRadius: '10px',
-                },
-                '::-webkit-scrollbar-thumb': {
-                  background: '#00C1D5',
-                  borderRadius: '10px',
-                },
-                '::-webkit-scrollbar-thumb:hover': {
-                  background: '#00A3B7',
-                },
-              }),
-            }}
-          />
-        </div>
-
-        <Button
-          onClick={handlePredict}
-          disabled={selectedIndex === null || loading}
-          className={`w-full py-3 text-lg font-semibold rounded-md transition-all duration-300
-            ${loading || selectedIndex === null ? 'bg-gray-600 text-[#CBD5E1] cursor-not-allowed' : 'bg-[#00C1D5] hover:bg-[#00A3B7] text-white'}`}
-        >
-          {loading ? "Predicting..." : "Predict Survival Status"}
-        </Button>
-
-        {error && (
-          <div className="text-red-400 text-sm mt-2 text-center">
-            <p>{error}</p>
-            {error.includes("Failed to load analysis visualizations") && currentRunId && (
-              <Button
-                onClick={handleRetryPolling}
-                className="mt-2 bg-[#00C1D5] hover:bg-[#00A3B7] text-white"
-              >
-                Retry Loading Visualizations
-              </Button>
-            )}
-          </div>
-        )}
-
-        {result && (
-          <Card className="mt-4 bg-[#2D3748] border border-gray-600/50 text-[#E0E7EB] shadow-md">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-3 text-[#00C1D5]">Prediction Result</h3>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-md">Patient ID:</p>
-                <span className="font-mono text-[#00C1D5] text-lg">{result.patient_id}</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-md">Status:</p>
-                <Badge
-                  className={`text-lg px-3 py-1 font-semibold
-                  ${result.prediction === "Alive" ? 'bg-green-600/80 hover:bg-green-700/80 text-white' : 'bg-red-600/80 hover:bg-red-700/80 text-white'}`}
-                >
-                  {result.prediction}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-md">Confidence:</p>
-                <span className="text-lg text-[#FFA000]">{result.confidence.toFixed(2)}%</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
       <div className="w-full max-w-5xl flex flex-col gap-12 mt-16">
-        <h1 className="text-4xl font-bold text-center text-[#00C1D5]">
-          🧭 Model Analysis Journey
-        </h1>
 
-        <motion.div
-          className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Dataset Overview</h2>
-          <PatientEDAPlot />
-        </motion.div>
+        <Collapsible defaultOpen={false} className="w-full" onOpenChange={(open) => setIsOpen(open)}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full bg-[#1F2937] p-6 rounded-xl shadow-lg border border-gray-700/50 text-[#00C1D5] hover:bg-[#2D3748] transition-colors duration-200">
+            <h2 className="text-2xl font-semibold text-[#00C1D5]">Explore Dataset Summary</h2>
+            <span className="text-[#00C1D5]">
+              {isOpen ? (
+            <ChevronUp className="h-6 w-6 transition-transform duration-200" />
+          ) : (
+            <ChevronDown className="h-6 w-6 transition-transform duration-200" />
+          )}
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4 bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50">
+            <p className="text-[#CBD5E1] text-base mb-6">
+              The TCGA-BRCA dataset, sourced from The Cancer Genome Atlas, is a rich collection of breast cancer data. This visualization leverages two key components: protein expression data, detailing molecular profiles of breast invasive carcinoma, and phenotype data, capturing clinical features like patient demographics, tumor stages, and survival outcomes. Together, these subsets offer insights into the molecular and clinical landscape of breast cancer, supporting exploration of disease patterns and potential biomarkers.
+            </p>
+            <div className="w-full max-w-3xl flex flex-col gap-6 p-6 rounded-xl bg-[#1F2937] shadow-lg border border-gray-700/50 mb-12 mx-auto">
+              <div className="mb-4">
+                <label htmlFor="patient-select" className="block text-[#CBD5E1] text-sm font-medium mb-2">
+                  Select Patient:
+                </label>
+                <Select
+                  id="patient-select"
+                  options={patientOptions}
+                  onChange={(selected) => setSelectedIndex(selected?.value ?? null)}
+                  placeholder="Search or select a patient..."
+                  isSearchable
+                  styles={{
+                    control: (provided, state) => ({
+                      ...provided,
+                      backgroundColor: '#2D3748',
+                      borderColor: state.isFocused ? '#00C1D5' : '#4B5563',
+                      color: '#E0E7EB',
+                      boxShadow: state.isFocused ? '0 0 0 1px #00C1D5' : 'none',
+                      '&:hover': {
+                        borderColor: '#00C1D5',
+                      },
+                    }),
+                    singleValue: (provided) => ({
+                      ...provided,
+                      color: '#E0E7EB',
+                    }),
+                    input: (provided) => ({
+                      ...provided,
+                      color: '#E0E7EB',
+                    }),
+                    placeholder: (provided) => ({
+                      ...provided,
+                      color: '#9CA3AF',
+                    }),
+                    menu: (provided) => ({
+                      ...provided,
+                      backgroundColor: '#2D3748',
+                      borderColor: '#4B5563',
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      backgroundColor: state.isFocused
+                        ? 'rgba(0, 193, 213, 0.2)'
+                        : state.isSelected
+                        ? '#00C1D5'
+                        : 'transparent',
+                      color: state.isSelected ? 'white' : '#E0E7EB',
+                      '&:active': {
+                        backgroundColor: 'rgba(0, 193, 213, 0.3)',
+                      },
+                    }),
+                    menuList: (provided) => ({
+                      ...provided,
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      '::-webkit-scrollbar': {
+                        width: '8px',
+                      },
+                      '::-webkit-scrollbar-track': {
+                        background: '#1F2937',
+                        borderRadius: '10px',
+                      },
+                      '::-webkit-scrollbar-thumb': {
+                        background: '#00C1D5',
+                        borderRadius: '10px',
+                      },
+                      '::-webkit-scrollbar-thumb:hover': {
+                        background: '#00A3B7',
+                      },
+                    }),
+                  }}
+                />
+              </div>
+
+              <Button
+                onClick={handlePredict}
+                disabled={selectedIndex === null || loading}
+                className={`w-full py-3 text-lg font-semibold rounded-md transition-all duration-300
+                  ${loading || selectedIndex === null ? 'bg-gray-600 text-[#CBD5E1] cursor-not-allowed' : 'bg-[#00C1D5] hover:bg-[#00A3B7] text-white'}`}
+              >
+                {loading ? "Predicting..." : "Check Survival Status"}
+              </Button>
+
+              {error && (
+                <div className="text-red-400 text-sm mt-2 text-center">
+                  <p>{error}</p>
+                  {error.includes("Failed to load analysis visualizations") && currentRunId && (
+                    <Button
+                      onClick={handleRetryPolling}
+                      className="mt-2 bg-[#00C1D5] hover:bg-[#00A3B7] text-white"
+                    >
+                      Retry Loading Visualizations
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {result && (
+                <Card className="mt-4 bg-[#2D3748] border border-gray-600/50 text-[#E0E7EB] shadow-md">
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-semibold mb-3 text-[#00C1D5]">Result</h3>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-md">Patient ID:</p>
+                      <span className="font-mono text-[#00C1D5] text-lg">{result.patient_id}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-md">Status:</p>
+                      <Badge
+                        className={`text-lg px-3 py-1 font-semibold
+                        ${result.prediction === "Alive" ? 'bg-green-600/80 hover:bg-green-700/80 text-white' : 'bg-red-600/80 hover:bg-red-700/80 text-white'}`}
+                      >
+                        {result.prediction}
+                      </Badge>
+                    </div>
+                    {/* <div className="flex justify-between items-center"> */}
+                      {/* <p className="text-md">Confidence:</p>
+                      <span className="text-lg text-[#FFA000]">{result.confidence.toFixed(2)}%</span> */}
+                    {/* </div> */}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            <motion.div
+              className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {/* <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Dataset Overview</h2> */}
+              <PatientEDAPlot />
+            </motion.div>
+          </CollapsibleContent>
+        </Collapsible>
 
         <motion.div
           className="bg-[#1F2937] p-8 rounded-xl shadow-lg border border-gray-700/50"
@@ -409,7 +428,7 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Federated Learning Visualizer</h2>
+          <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Begin Analysis Journey</h2>
           <FLVisualizer onComplete={handleTrainingComplete} />
         </motion.div>
 
@@ -460,7 +479,7 @@ export default function HomePage() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">UMAP Embeddings</h2>
+                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Patient Embedding Space (UMAP)</h2>
                   <UMAPViewer runId={currentRunId} />
                 </motion.div>
               </ErrorBoundary>
@@ -474,7 +493,7 @@ export default function HomePage() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Divergence Analysis</h2>
+                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Client Divergence Tracker</h2>
                   <DivergenceViewer runId={currentRunId} onLoadComplete={() => setShowImportance(true)} />
                 </motion.div>
               </ErrorBoundary>
@@ -488,11 +507,10 @@ export default function HomePage() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Feature Importance</h2>
+                  <h2 className="text-2xl font-semibold mb-6 text-[#00C1D5]">Feature Importance Analysis</h2>
                   <FeatureImportanceViewer runId={currentRunId} onLoadComplete={() => setShowUMAP(true)} />
                 </motion.div>
               </ErrorBoundary>
-
             </>
           )}
         </AnimatePresence>
