@@ -8,14 +8,14 @@ class Config:
     device = "cpu"
     
     # Data preprocessing
-    n_neighbors_knn_imputer = 3
+    n_neighbors_knn_imputer = 5
     random_seed = 30
     n_neighbors_graph = 5
     test_size = 0.2
 
     # FL Training setup
     n_clients = 3
-    n_rounds = 8
+    n_rounds = 10
     local_epochs = 4
     label_map = {'Alive': 1, 'Dead': 0}
 
@@ -34,9 +34,10 @@ class Config:
     min_available_clients = 3
 
     # Simulation mode toggle
-    flower_simulation = False
+    flower_simulation = True
 
     # Vercel Blob config
+    upload_to_blob = False
     vercel_blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
     vercel_blob_store_url = os.getenv("BLOB_STORE_BASE_URL")
     if not vercel_blob_token:

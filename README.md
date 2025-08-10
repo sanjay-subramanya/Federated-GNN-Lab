@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A playground for training and analyzing simple Graph Neural Networks in a federated learning environment using the TCGA-BRCA dataset. With this interactive laboratory, you can dissect the decision-making processes of each of the individual models real time, aided by visualization tools.
+A playground for training and analyzing simple Graph Neural Networks in a federated learning environment using the TCGA-BRCA dataset. With this interactive laboratory, you can dissect the decision-making processes of each of the individual models in real time, aided by visualization tools.
 
 ![Federated Learning](https://img.shields.io/badge/Federated%20Learning-Enabled-brightgreen)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-blue)
@@ -53,32 +53,21 @@ cd ..
 
 ### Backend Server (API Endpoints)
 
-1. Navigate to the backend directory:
+Navigate to the backend directory and start the FastAPI server:
 
 ```bash
 cd backend
-```
-
-2. Start the FastAPI server:
-
-```bash
 uvicorn router:app --reload
 ```
 
 The server will start at port 8000 with API documentation available at http://127.0.0.1:8000/docs.
 
-
 ### Frontend Visualizer
 
-1. Navigate to the frontend directory:
+Navigate to the frontend directory and start the development server:
 
 ```bash
 cd frontend
-```
-
-2. Start the development server:
-
-```bash
 npm run dev
 ```
 
@@ -90,7 +79,7 @@ To run FL training without the frontend interface:
 
 ```bash
 cd backend
-python -m backend.main
+python -m main
 ```
 
 #### Configuration Options

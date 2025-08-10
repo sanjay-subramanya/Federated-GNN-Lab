@@ -24,8 +24,6 @@ def download_file_from_blob(blob_key: str, dest_local_path: str) -> None:
 
 
 def load_file_from_blob_if_needed(blob_key: str, dest_local_path: str) -> str:
-
-    return dest_local_path
     
     if os.path.exists(dest_local_path):
         logger.debug(f"File found locally: {dest_local_path}")

@@ -45,7 +45,7 @@ async def stream_training(request: Request, req: TrainConfig):
                 yield json.dumps(round_result) + "\n"
                 time.sleep(0.5)
         except Exception as e:
-            # logger.error(f"Error in training_generator: {str(e)}")
+            logger.error(f"Error in training_generator: {str(e)}")
             raise
 
     logger.info(f"Training stream completed for run_id: {run_id}")

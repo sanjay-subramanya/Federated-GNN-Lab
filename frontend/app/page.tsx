@@ -265,7 +265,7 @@ export default function HomePage() {
         🌐 Federated Learning Lab
       </h1>
       <p className="text-xl text-[#CBD5E1] opacity-90 max-w-2xl text-center mb-10">
-        A dynamic platform for exploring and visualizing federated learning model training and insights.
+        A dynamic platform for exploring and visualizing FL model training and insights.
         <br />
         {/* <strong>Debug Note:</strong> Check the browser console (F12) for detailed logs. */}
       </p>

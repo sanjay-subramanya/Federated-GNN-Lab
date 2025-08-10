@@ -22,7 +22,6 @@ def main():
     X, y, class_names = preprocess_data(protein_df, phen_df)
     logger.info(f"Classical ML preprocessing complete. X shape: {X.shape}, classes: {class_names}")
 
-    # Load and partition data for federated learning
     logger.info("Preparing data for federated learning...")
     client_datasets, num_features, num_classes = load_and_partition_data(protein_df, phen_df)
     logger.info(f"Created {len(client_datasets)} client datasets with {num_features} features and {num_classes} classes")
@@ -31,7 +30,6 @@ def main():
                         if data_obj.train_mask.sum().item() > 0]
     logger.info(f"Total clients with valid training data: {len(valid_client_ids)} out of {Config.n_clients}")
     
-    # Run federated learning simulation
     if Config.flower_simulation:
         logger.info("Starting Flower FL simulation...")
         run_flower_simulation(client_datasets, num_features, num_classes, Config.n_rounds)

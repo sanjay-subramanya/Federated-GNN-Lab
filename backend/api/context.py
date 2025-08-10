@@ -20,10 +20,11 @@ class AppContext:
     def _load_model(self, model_path, blob_key: str) -> SAGENet:
         if not isinstance(model_path, str):
             model_path = str(model_path)
+        if Config.upload_to_blob:
+            model_path = load_file_from_blob_if_needed(blob_key, model_path)
         input_dim = len(self.feature_cols)
         model = SAGENet(in_dim=input_dim, hidden_dim=Config.hidden_dim, out_dim=Config.out_dim, dropout=Config.dropout)
-        local_path = load_file_from_blob_if_needed(blob_key, model_path)
-        checkpoint = torch.load(local_path, map_location=torch.device(Config.device))
+        checkpoint = torch.load(model_path, map_location=torch.device(Config.device))
         model.load_state_dict(checkpoint["model_state_dict"])
         model.eval()
         return model

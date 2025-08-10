@@ -101,14 +101,14 @@ export default function FeatureImportanceViewer({ runId, onLoadComplete }: {
     }
   }, [selectedModel, runId, onLoadComplete]);
 
+  // Re-fetch when selectedModel changes
   useEffect(() => {
     fetchFeatureImportances();
-  }, [fetchFeatureImportances]); // Re-fetch when selectedModel changes
+  }, [fetchFeatureImportances]);
 
-  // Custom Tick Formatter for long feature names
   const formatFeatureNameTick = (tickItem: string) => {
     if (tickItem.length > 15) {
-      return tickItem.substring(0, 12) + "..."; // Truncate long names
+      return tickItem.substring(0, 12) + "...";
     }
     return tickItem;
   };

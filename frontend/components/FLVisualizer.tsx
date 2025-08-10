@@ -81,14 +81,12 @@ export default function FLVisualizer({ onComplete }: FLVisualizerProps) {
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
       }
 
-      // Log all response headers
       const headers: { [key: string]: string } = {};
       response.headers.forEach((value, key) => {
         headers[key] = value;
       });
       console.log("DEBUG: /train response headers:", headers);
 
-      // Try case-insensitive header access
       const runIdFromHeader = response.headers.get("X-Run-Id") || response.headers.get("x-run-id") || null;
       console.log("DEBUG: Run ID from header:", runIdFromHeader);
 

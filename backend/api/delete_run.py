@@ -16,8 +16,10 @@ router = APIRouter()
 async def delete_run(request: Request, req: RunIdRequest):
     run_id = req.run_id.strip()
     try:
-        # delete_run_from_blob(run_id)
-        
+        if Config.upload_to_blob:
+            delete_run_from_blob(run_id)
+            logger.info(f"Deleted blob for runId: {run_id}")
+
         # Also delete local copy if exists
         run_folder = Config.model_dir / run_id
 

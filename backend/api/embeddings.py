@@ -43,14 +43,25 @@ def get_dissection_embeddings(
         current_model_dir = Config.model_dir  
         blob_prefix = "saved_models" 
 
+    if run_id:
+        blob_key = None
+        current_model_dir = Config.model_dir / run_id
+        if Config.upload_to_blob:
+            blob_prefix = f"saved_models/{run_id}"
+    else:
+        current_model_dir = Config.model_dir
+
     global_model_path = current_model_dir / "global_model_manual.pt"
     model_paths = {"global": global_model_path}
-
     metadata_path = current_model_dir / f"_train_metadata.json"
-    metadata_blob_key = f"{blob_prefix}/_train_metadata.json"
 
-    local_metadata_path = load_file_from_blob_if_needed(metadata_path, metadata_blob_key)
-    num_clients_trained, num_rounds_trained = load_metadata(local_metadata_path)
+    if not metadata_path.exists():
+        logger.info(f"Metadata file not found at {metadata_path}.")
+        if Config.upload_to_blob:
+            metadata_blob_key = f"{blob_prefix}/_train_metadata.json"
+            metadata_path = load_file_from_blob_if_needed(metadata_blob_key, str(metadata_path))
+    
+    num_clients_trained, num_rounds_trained = load_metadata(metadata_path)
 
     for i in range(1, 1 + num_clients_trained):
         model_paths[f"client_{i}"] = current_model_dir / f"client_{i}_model.pt"
@@ -61,10 +72,10 @@ def get_dissection_embeddings(
 
     for model_name, path in model_paths.items():
         blob_key = f"{blob_prefix}/{path.name}"
-        if not path.exists():
+        if not path.exists() and Config.upload_to_blob:
             try:
                 # Attempt to download from blob
-                load_file_from_blob_if_needed(blob_key, path)
+                path = load_file_from_blob_if_needed(blob_key, str(path))
             except Exception as e:
                 logger.warning(f"Model file not found for {model_name} at {path} (blob: {blob_key}): {e}")
                 logger.warning(f"Directory contents: {list(Path(path.parent).iterdir())}")
@@ -88,9 +99,6 @@ def get_dissection_embeddings(
                 "patient_ids": embedding_df.index.tolist()
             })
 
-            del model, embedding_df, embedding_array
-            gc.collect()
-
         except Exception as e:
             logger.error(f"Unexpected error for {model_name} at {path} (blob: {blob_key}): {e}")
 
@@ -107,8 +115,7 @@ def get_dissection_embeddings(
         logger.error(f"UMAP fitting failed: {e}")
         raise HTTPException(status_code=500, detail=f"UMAP fitting failed: {e}")
 
-    del combined_embeddings, reducer
-    gc.collect()
+    del model, combined_embeddings
 
     final_results: Dict[str, List[EmbeddingPoint]] = {}
     current_idx = 0

@@ -33,7 +33,7 @@ export default function UMAPViewer({ runId }: { runId?: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!runId) return; // 🛑 Avoid fetch if runId is not yet set
+    if (!runId) return; 
 
     const fetchEmbeddings = async () => {
       setLoading(true);

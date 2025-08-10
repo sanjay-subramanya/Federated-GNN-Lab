@@ -1,5 +1,4 @@
 import json
-import gc
 import logging
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, RootModel
@@ -30,27 +29,26 @@ def get_divergence_history(
 
     if run_id:
         current_model_dir = Config.model_dir / run_id
-        blob_prefix = f"saved_models/{run_id}"
+        if Config.upload_to_blob:
+            blob_prefix = f"saved_models/{run_id}"
+            blob_key = f"{blob_prefix}/_divergence_metrics.json"
+        else:
+            blob_prefix = None
         logger.info(f"Received request to get divergence history for run_id: {run_id}")
-    else:
-        current_model_dir = Config.model_dir  
-        blob_prefix = "saved_models"
 
     path = current_model_dir / "_divergence_metrics.json"
-    blob_key = f"{blob_prefix}/_divergence_metrics.json"
-
+    
     try:
-        local_path = load_file_from_blob_if_needed(blob_key, str(path))
+        local_path = path if not Config.upload_to_blob else load_file_from_blob_if_needed(blob_key, str(path))
+
     except Exception as e:
-        logger.warning(f"Divergence metrics file not found at {path} (blob: {blob_key}): {e}")
+        logger.warning(f"Divergence metrics file not found: {e}")
         raise HTTPException(status_code=404, detail="Divergence metrics file not found.")
 
     try:
         with open(local_path, "r") as f:
             data = json.load(f)
         response = DivergenceHistoryResponse.model_validate(data)
-        del data
-        gc.collect()
         return response
     except json.JSONDecodeError as e:
         logger.error(f"Error decoding JSON from divergence metrics file at {path}: {e}")

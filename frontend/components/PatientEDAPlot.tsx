@@ -57,7 +57,7 @@ export default function PatientEDAPlot() {
           x: filtered.map(() => stage),
           name: status,
           legendgroup: status,
-          showlegend: false, // <- disable per-trace legend (we'll render HTML legend)
+          showlegend: false, 
           side: status === "Dead" ? "negative" : "positive",
           width: 0.88,
           fillcolor: "rgba(0,0,0,0)",
@@ -173,7 +173,7 @@ export default function PatientEDAPlot() {
                       },
                       tickfont: { size: 14, color: "#E0E7EB" },
                       zeroline: false,
-                      showgrid: false, // <- remove horizontal grid lines
+                      showgrid: false,
                       showline: true,
                       linecolor: "#4B5563",
                       showspikes: false,
@@ -183,8 +183,8 @@ export default function PatientEDAPlot() {
                     violingap: 0.17,
                     plot_bgcolor: "#1F2937",
                     paper_bgcolor: "#1F2937",
-                    showlegend: false, // <- disable Plotly legend so it won't affect layout
-                    margin: { t: 40, l: 180, r: 10, b: 70 }, // symmetric left/right
+                    showlegend: false,
+                    margin: { t: 40, l: 180, r: 10, b: 70 },
                     height: 450,
                     hovermode: "closest",
                     hoverlabel: {

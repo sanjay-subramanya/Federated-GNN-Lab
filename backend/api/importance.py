@@ -36,15 +36,16 @@ class FeatureImportanceResponse(BaseModel):
 
 def calculate_saliency_and_top_features(
     current_model_path: Path,
-    blob_key: str,
     X_tensor: torch.Tensor,
     edge_index_tensor: torch.Tensor,
     feature_column_names: List[str],
     k_features: int,
     ctx: AppContext,
+    blob_key: str = None,
 ) -> List[FeatureImportanceEntry]:
     try:
-        current_model_path = load_file_from_blob_if_needed(blob_key, current_model_path)
+        if blob_key and Config.upload_to_blob:
+            current_model_path = load_file_from_blob_if_needed(blob_key, current_model_path)
         model = ctx._load_model(current_model_path, blob_key)
 
         saliency = Saliency(model)
@@ -63,8 +64,7 @@ def calculate_saliency_and_top_features(
 
         sorted_features = sorted(importance_scores.items(), key=lambda item: item[1], reverse=True)
         
-        del model, input_tensor_for_saliency, saliency
-        del logits, attributions, predicted_classes, feature_attributions_mean
+        del model, input_tensor_for_saliency, saliency, logits, attributions
         gc.collect()
 
         return [{"feature_name": k, "importance": v} for k, v in sorted_features[:k_features]]
@@ -100,55 +100,53 @@ def get_feature_importance(
         edge_index_tensor_local = torch.from_numpy(edge_index_np).long().to(Config.device)
         logger.info("Graph edge_index created locally.")
 
-        del adjacency_matrix, coo_matrix, edge_index_np
-        gc.collect()
     except Exception as e:
         logger.error(f"Error during data loading/preprocessing/graph creation: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to prepare data for feature importance: {e}")
 
     if run_id:
+        blob_key, global_blob_key = None, None
         current_model_dir = Config.model_dir / run_id
-        blob_prefix = f"saved_models/{run_id}"
+        if Config.upload_to_blob:
+            blob_prefix = f"saved_models/{run_id}"
     else:
-        current_model_dir = Config.model_dir  
-        blob_prefix = "saved_models"
+        current_model_dir = Config.model_dir
 
     if model_name == "global":
         current_model_path = current_model_dir / "global_model_manual.pt"
-        blob_key = f"{blob_prefix}/global_model_manual.pt"
+        if Config.upload_to_blob:
+            blob_key = f"{blob_prefix}/global_model_manual.pt"
     else:
         client_id = model_name.split('_')[-1]
         current_model_path = current_model_dir / f"client_{client_id}_model.pt"
-        blob_key = f"{blob_prefix}/client_{client_id}_model.pt"
         global_model_path = current_model_dir / "global_model_manual.pt"
-        global_blob_key = f"{blob_prefix}/global_model_manual.pt"
+        if Config.upload_to_blob:
+            blob_key = f"{blob_prefix}/client_{client_id}_model.pt"
+            global_blob_key = f"{blob_prefix}/global_model_manual.pt"
 
     X_inference_tensor_local = torch.tensor(X_processed_np, dtype=torch.float32).to(Config.device)
 
     current_model_importances = calculate_saliency_and_top_features(
         current_model_path,
-        blob_key,
         X_inference_tensor_local,
         edge_index_tensor_local,
         ctx.feature_cols,
         top_k,
         ctx,
+        blob_key,
     )
-
-    gc.collect()
 
     overlap_data: Optional[FeatureOverlap] = None
     if model_name != "global":
         global_model_importances = calculate_saliency_and_top_features(
             global_model_path,
-            global_blob_key,
             X_inference_tensor_local,
             edge_index_tensor_local,
             ctx.feature_cols,
             top_k,
             ctx,
+            global_blob_key
         )
-        gc.collect()
         global_top_features_names = {entry["feature_name"] for entry in global_model_importances}
         current_client_top_features_names = {entry["feature_name"] for entry in current_model_importances}
         common_features = list(global_top_features_names.intersection(current_client_top_features_names))
@@ -162,7 +160,7 @@ def get_feature_importance(
         logger.info(f"Overlap with global model calculated: {overlap_percentage:.2f}%")
 
 
-    del X_inference_tensor_local, X_processed_np, edge_index_tensor_local
+    del X_inference_tensor_local, edge_index_tensor_local, adjacency_matrix, coo_matrix, edge_index_np
     gc.collect()
 
     logger.info(f"Feature importance calculated for {model_name}. Top {top_k} features retrieved.")
